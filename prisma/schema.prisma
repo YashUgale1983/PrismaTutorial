@@ -1,0 +1,82 @@
+// A 'generator' is defined to generate client side usable code 
+// according to the specified provider type.
+// In this case, when we run 'prisma generate' command, a Javascript 
+// or TypeScript client code is generated which gives us access to  
+// the 'PrismaClient' class to use in our frontend code
+generator client {
+  provider = "prisma-client-js"
+}
+
+// A 'datasource' is defined to link our prisma schema to our database
+// Here, we just need to specify the database like sqlite, postgresql,
+// mysql, mongodb, cockroachdb, etc. and put the database URL
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  // Every model needs to have 'id' field with '@id' attribute 
+  id               String          @id @default(uuid())
+  age              Int
+  name             String
+  email            String
+  role             Role            @default(BASIC)
+  // this field is an example of one to many relationship hence array of 'Post' 
+  // type and '@relation' attribute
+  // here, since 2 fields have relations in the Post model, we use the special 
+  // names given to the relations for easier identification 
+  writtenPosts     Post[]          @relation("writtenPosts")
+  favouritePosts   Post[]          @relation("favouritePosts")
+  // this field is an example of one to one relationship
+  userPreference   UserPreference? @relation(fields: [userPreferenceId], references: [id])
+  // since this is a one to one relationship, we give 'foreign key' '@unique' attribute
+  userPreferenceId String?         @unique
+
+  // Attributes given to the fields are called field level attributes - @
+  // Attributes given to the entire model are called block level attributes - @@
+  // using @@ applies the attribute to the entire model
+  // here, no 2 users can have the same 'name' and 'email'
+  @@unique([name, email])
+  // this defines an index on the email field for database optimization which helps 
+  // in searching and sorting according to the email field
+  @@index([email])
+}
+
+model UserPreference {
+  id           String  @id @default(uuid())
+  emailUpdates Boolean
+  // if a field is optional, use '?' type modifier
+  user         User?
+}
+
+model Post {
+  id             String     @id @default(uuid()) // 'uuid()' generates a unique id everytime
+  title          String
+  averageRating  Float
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  // here we give a special name to the '@relation' for easier identification if 
+  // in case multiple fields have 'Post' as data type in some other model
+  author         User       @relation("writtenPosts", fields: [authorId], references: [id])
+  authorId       String
+  favouritedBy   User?      @relation("favouritePosts", fields: [favouritedById], references: [id])
+  favouritedById String?
+  categories     Category[]
+
+  // this basically means that we want to create an 'id' using 'title' and 'authorId'. But for this 
+  // to work, we have to comment out 'id' field defined above
+  // @@id([title,authorId])
+}
+
+model Category {
+  id    String @id @default(uuid())
+  name  String @unique
+  posts Post[]
+}
+
+// enum helps us to restrict the value to those specified here
+enum Role {
+  BASIC
+  ADMIN
+}
